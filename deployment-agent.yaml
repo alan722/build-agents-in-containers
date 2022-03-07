@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pipeline-auth
+data:
+  AZP_URL: aHR0cHM6Ly9kZXYuYXp1cmUuY29tL0N1cmlvdXNBbA==  # https://dev.azure.com/CuriousAl
+  AZP_POOL: a2VkYS1jb250YWluZXItYWtz # keda-container-aks
+  AZP_TOKEN: dnNkMndtNWhvdzU2bnlpZGdkb3FpYXF0NzRpNXJub256YzJ3cnI3aDVpYmxoNDd2N3l1YQ==
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: azdevops-deployment
+  namespace: default
+  labels:
+    app: azdevops-agent
+spec:
+  replicas: 2 #here is the configuration for the actual agent always running
+  selector:
+    matchLabels:
+      app: azdevops-agent
+  template:
+    metadata:
+      labels:
+        app: azdevops-agent
+    spec:
+      containers:
+      - name: azdevops-agent
+        image: curiousal/dockeragent
+        env:
+          - name: AZP_URL
+            valueFrom:
+              secretKeyRef:
+                name: pipeline-auth
+                key: AZP_URL
+          - name: AZP_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: pipeline-auth
+                key: AZP_TOKEN
+          - name: AZP_POOL
+            valueFrom:
+              secretKeyRef:
+                name: pipeline-auth
+                key: AZP_POOL
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-volume
+      volumes:
+      - name: docker-volume
+        hostPath:
+          path: /var/run/docker.sock
